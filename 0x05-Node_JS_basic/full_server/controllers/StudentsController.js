@@ -1,33 +1,29 @@
-import { readDatabase } from '../utils.js';
+const readDatabase = require('../utils');
 
-export class StudentsController {
-  static async getAllStudents(req, res) {
-    try {
-      const fields = await readDatabase(process.argv[2]);
-      let result = 'This is the list of our students\n';
-      Object.keys(fields).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
-        .forEach(field => {
-          result += `Number of students in ${field}: ${fields[field].length}. List: ${fields[field].join(', ')}\n`;
-        });
-      res.status(200).send(result.trim());
-    } catch (error) {
-      res.status(500).send('Cannot load the database');
-    }
+module.exports = class StudentsController {
+  static getAllStudents(request, response) {
+    readDatabase(process.argv[2])
+      .then((data) => {
+        let printData = 'This is the list of our students';
+        for (const field in data) {
+          if (Object.hasOwnProperty.call(data, field)) {
+            const element = data[field];
+            printData += `\nNumber of students in ${field}: ${element.number}. ${element.students}`;
+          }
+        }
+        response.send(printData);
+      })
+      .catch((err) => { response.send(err.message); });
   }
 
-  static async getAllStudentsByMajor(req, res) {
-    const major = req.params.major;
-    if (!['CS', 'SWE'].includes(major)) {
-      return res.status(500).send('Major parameter must be CS or SWE');
-    }
-    try {
-      const fields = await readDatabase(process.argv[2]);
-      if (!fields[major]) {
-        return res.status(500).send('Cannot load the database');
-      }
-      res.status(200).send(`List: ${fields[major].join(', ')}`);
-    } catch (error) {
-      res.status(500).send('Cannot load the database');
-    }
+  static getAllStudentsByMajor(request, response) {
+    if (!['SWE', 'CS'].includes(request.params.major)) response.status(500).send('Major parameter must be CS or SWE');
+    readDatabase(process.argv[2])
+      .then((data) => {
+        const printData = data[request.params.major].students;
+        if (printData) response.send(printData);
+        response.status(500).send('Major parameter must be CS or SWE');
+      })
+      .catch((err) => { response.send(err.message); });
   }
-}
+};
